@@ -34,4 +34,6 @@ To start the ember frontend, execute `ember build --watch`. Your ember applicati
 
 ## Contributing
 
-Submit modifications to this project using the Pull Request functionality within Github. Review the available [issues](https://github.com/cygnusb2b/cms-test/issues) for tasks and requirements.
+Submit modifications to this project using the Pull Request functionality within Github.
+
+Review the [project requirements](https://github.com/cygnusb2b/cms-test/projects/1) for tasks to complete.
