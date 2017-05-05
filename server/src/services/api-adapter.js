@@ -2,6 +2,7 @@ const JSONAPISerializer = require('jsonapi-serializer').Serializer;
 const JSONAPIDeserializer = require('jsonapi-serializer').Deserializer;
 const modelManager = require('./model-manager');
 const path = require('path');
+const bluebird = require('bluebird');
 
 /**
  * Applies relationship data from a deserialized request payload
@@ -72,7 +73,7 @@ function getDeserializerFor(type) {
       valueForRelationship: model => ({ id: model.id, type: model.type }),
     };
   });
-  return new JSONAPIDeserializer(options);
+  return bluebird.promisifyAll(new JSONAPIDeserializer(options));
 }
 
 /**

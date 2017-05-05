@@ -1,10 +1,11 @@
 const express = require('express');
-const router = express.Router();
 const httpError = require('http-errors');
-
 const loadCollection = require('./services/collection-loader');
 const modelManager = require('./services/model-manager');
 const adapter = require('./services/api-adapter');
+const bluebird = require('bluebird');
+
+const router = express.Router();
 
 /**
  * Finds a model by ID, or returns an error to the callback if not found.
@@ -13,7 +14,7 @@ const adapter = require('./services/api-adapter');
  * @param {string} id The model identifier.
  * @param {function} cb The error/result callback function.
  */
-function findById(collection, id, cb) {
+const findById = bluebird.promisify((collection, id, cb) => {
   collection.findOne({ _id: id }, (err, doc) => {
     if (err) {
       cb(err);
@@ -23,24 +24,33 @@ function findById(collection, id, cb) {
       cb(null, doc);
     }
   });
-};
+});
 
 /**
  * Validates the API request payload.
  * Will return an error to the callback if the payload is invliad.
  *
  * @param {object} payload The request payload.
+ * @param {boolean} isNew Whether the payload is for a new model.
  * @param {function} cb The error/result callback function.
  */
-function validatePayload(payload, cb) {
+const validatePayload = bluebird.promisify((payload, isNew, cb) => {
   if (!payload.data) {
-    cb(new Error('No data member was found in the request.'));
+    cb(httpError(400, 'No data member was found in the request.'));
   } else if (!payload.data.type) {
-    cb(new Error('All data payloads must contain the `type` member.'));
+    cb(httpError(400, 'All data payloads must contain the `type` member.'));
+  } else if (isNew) {
+    if (payload.data.id) {
+      cb(httpError(400, 'Client generated identifiers are not supported. Remove the `id` member and try again.'));
+    } else {
+      cb(null, true);
+    }
+  } else if (!payload.data.id) {
+    cb(httpError(400, 'All update requests must contain the `id` member.'));
   } else {
     cb(null, true);
   }
-};
+});
 
 /**
  * Validates that the provided model type exists.
@@ -49,19 +59,19 @@ function validatePayload(payload, cb) {
  * @param {string} type The model type (in plural form).
  * @param {function} cb The error/result callback function.
  */
-function validateType(type, cb) {
+const validateType = bluebird.promisify((type, cb) => {
   if (!modelManager.exists(type)) {
     cb(httpError(404, `No API resource exists for type: ${type}`));
   } else {
     cb(null, true);
   }
-};
+});
 
 /**
  * Routes for listing all resources.
  */
 router.get('/', (req, res) => {
-  let resources = {};
+  const resources = {};
   modelManager.getAllTypes().forEach((type) => {
     resources[type] = adapter.createLink(req, type);
   });
@@ -77,65 +87,40 @@ router.route('/:type')
    */
   .get((req, res, next) => {
     const type = req.params.type;
-    validateType(type, (err) => {
-      if (err) {
-        return next(err);
-      }
-      loadCollection(type).find({}, (err, records) => {
-        if (err) {
-          return next(err);
-        }
+    validateType(type).then(() => {
+      loadCollection(type).findAsync({}).then((records) => {
         const serializer = adapter.getSerializerFor(type, req);
         res.json(serializer.serialize(records));
-      });
-    });
+      }).catch(next);
+    }).catch(next);
   })
 
   /**
    * The create route.
    */
   .post((req, res, next) => {
-    const type = req.params.type;
     const payload = req.body;
-    validateType(type, (err) => {
-      if (err) {
-        return next(err);
-      }
-      validatePayload(payload, (err, valid) => {
-        if (err) {
-          return next(httpError(400, err));
-        }
-        if (payload.data.id) {
-          return next(httpError(400, 'Client generated IDs is not supported. Remove the `id` member and try again.'));
-        }
-
+    validateType(req.params.type).then(() => {
+      validatePayload(payload, true).then(() => {
         const type = payload.data.type;
         const deserializer = adapter.getDeserializerFor(type);
-
-        deserializer.deserialize(payload, (err, data) => {
-          if (err) {
-            return next(err);
-          }
-
+        deserializer.deserializeAsync(payload).then((data) => {
           const metadata = modelManager.getMetadataFor(type);
+
           let toInsert = {};
-          metadata.attributes.forEach(attr => {
-            toInsert[attr] = data[attr] || null
+          metadata.attributes.forEach((attr) => {
+            toInsert[attr] = data[attr] || null;
+            return toInsert;
           });
+          toInsert = adapter.applyRelationshipData(type, data, toInsert);
 
-          adapter.applyRelationshipData(type, data, toInsert);
-
-          const collection = loadCollection(type);
-          collection.insert(toInsert, (err, record) => {
-            if (err) {
-              return next(err);
-            }
+          loadCollection(type).insertAsync(toInsert).then((record) => {
             const serializer = adapter.getSerializerFor(type, req);
             res.json(serializer.serialize(record));
-          });
-        });
-      });
-    });
+          }).catch(next);
+        }).catch(next);
+      }).catch(next);
+    }).catch(next);
   })
 ;
 
@@ -148,19 +133,13 @@ router.route('/:type/:id')
    */
   .get((req, res, next) => {
     const type = req.params.type;
-    validateType(type, (err) => {
-      if (err) {
-        return next(err);
-      }
+    validateType(type).then(() => {
       const collection = loadCollection(type);
-      findById(collection, req.params.id, (err, record) => {
-        if (err) {
-          return next(err);
-        }
+      findById(collection, req.params.id).then((record) => {
         const serializer = adapter.getSerializerFor(type, req);
         res.json(serializer.serialize(record));
-      });
-    });
+      }).catch(next);
+    }).catch(next);
   })
 
   /**
@@ -168,166 +147,126 @@ router.route('/:type/:id')
    */
   .delete((req, res, next) => {
     const type = req.params.type;
-    validateType(type, (err) => {
-      if (err) {
-        return next(err);
-      }
+    validateType(type).then(() => {
       const collection = loadCollection(type);
-      findById(collection, req.params.id, (err) => {
-        // Ensure the record exists before deleting it.
-        if (err) {
-          return next(err);
-        }
-        collection.remove({ _id: req.params.id }, (err) => {
-          if (err) {
-            return next(err);
-          }
-          res.status(204).send()
-        });
-      });
-    });
+      findById(collection, req.params.id).then(() => {
+        collection.removeAsync({ _id: req.params.id }).then(() => {
+          res.status(204).send();
+        }).catch(next);
+      }).catch(next);
+    }).catch(next);
   })
 
   /**
    * The update route.
    */
   .patch((req, res, next) => {
-    const payload = req.body;
-    validatePayload(payload, (err, valid) => {
-      if (err) {
-        return next(httpError(400, err));
-      }
-      if (!payload.data.id) {
-        return next(httpError(400, 'All update requests must contain the `id` member.'));
-      }
-      if (payload.data.id !== req.params.id) {
-        return next(httpError(400, 'The ID found in the request URI does not match the value of the `id` member.'));
-      }
-
-      const type = payload.data.type;
-      const deserializer = adapter.getDeserializerFor(type);
-
-      deserializer.deserialize(payload, (err, data) => {
-        if (err) {
-          return next(err);
+    validateType(req.params.type).then(() => {
+      const payload = req.body;
+      validatePayload(payload, false).then(() => {
+        if (payload.data.id !== req.params.id) {
+          throw httpError(400, 'The ID found in the request URI does not match the value of the `id` member.');
         }
-        let toUpdate = {};
-        const metadata = modelManager.getMetadataFor(type);
-        metadata.attributes.forEach((attr) => {
-          if (typeof data[attr] !== 'undefined') {
-            toUpdate[attr] = data[attr] || null;
-          }
-        });
+        const type = payload.data.type;
+        const deserializer = adapter.getDeserializerFor(type);
+        deserializer.deserializeAsync(payload).then((data) => {
+          const metadata = modelManager.getMetadataFor(type);
 
-        adapter.applyRelationshipData(type, data, toUpdate);
-
-        const collection = loadCollection(type);
-        collection.update({ _id: payload.data.id }, { $set: toUpdate }, (err) => {
-          if (err) {
-            return next(err);
-          }
-          findById(collection, payload.data.id, (err, record) => {
-            if (err) {
-              next(err);
-            } else {
-              const serializer = adapter.getSerializerFor(type, req);
-              res.json(serializer.serialize(record));
+          let toUpdate = {};
+          metadata.attributes.forEach((attr) => {
+            if (typeof data[attr] !== 'undefined') {
+              toUpdate[attr] = data[attr] || null;
             }
           });
-        });
-      });
-    });
+          toUpdate = adapter.applyRelationshipData(type, data, toUpdate);
+
+          const collection = loadCollection(type);
+          collection.updateAsync({ _id: payload.data.id }, { $set: toUpdate }).then(() => {
+            findById(collection, payload.data.id).then((record) => {
+              const serializer = adapter.getSerializerFor(type, req);
+              res.json(serializer.serialize(record));
+            }).catch(next);
+          }).catch(next);
+        }).catch(next);
+      }).catch(next);
+    }).catch(next);
   })
 ;
 
 /**
- * Relationship routes: currently disabled/not-implemented.
+ * Relationship routes.
  */
 router.route('/:type/:id/relationships/:key')
+  /**
+   * Display related models.
+   */
   .get((req, res, next) => {
     const type = req.params.type;
     const key = req.params.key;
-    validateType(type, (err) => {
-      if (err) {
-        return next(err);
-      }
+    validateType(type).then(() => {
       if (!modelManager.hasRelationship(type, key)) {
-        return next(httpError(400, `The relationship '${key}' does not exists on model '${type}'`));
+        throw httpError(400, `The relationship '${key}' does not exist on model '${type}'`);
       }
-
-      // Find the owning record.
-      const collection = loadCollection(type);
-      findById(collection, req.params.id, (err, record) => {
-        if (err) {
-          return next(err);
-        }
+      findById(loadCollection(type), req.params.id).then((record) => {
         const rel = modelManager.getRelationshipFor(type, key);
-        // @todo Must determine HOW the rel should be saved in the database.
-        // The default { id: "", type: "" } format is probably fine, however
-        // we would need the ability to munge this hash for different schemas.
-        // By always keeping a type, we could (but should we?) support a
-        // relationships where ANY model type (or multiple, disparate model types)
-        // could be related.
-        // For now, this assumes that multiple model types are NOT supported.
-        // The persistence side would need to enforce the rules about what can
-        // and cannot be saved.
-
-        // @todo This is now forced to use JSON:API format all the time.
-        // Likely, the entire routing structure should be a part of the adapter, as
-        // different formats may have completely different routing needs.
-        // This complicates things more depending on which framework one is using.
-        // Perhaps we don't care and will just enforce a standard somewhere in the microservice
-        // chain.
         const serializer = adapter.getSerializerFor(rel.entity, req);
-        const defaultResponse = (rel.type === 'many') ? [] : null;
-        if (!record[key]) {
-          return res.json(serializer.serialize(defaultResponse));
-        }
+        const defaultResponse = serializer.serialize((rel.type === 'many') ? [] : null);
 
-        // @todo This is enforcing a native database query.
-        // Once microserviced, this should use the entity service to retrieve data
-        // and not the db directly.
-        // @todo Relationships should support more options than just a foreign id.
-        // The rel definition could (and probably should) support query parameters of any kind.
-        let response;
-        const relCollection = loadCollection(rel.entity);
-        if (rel.type === 'many') {
-          if (Array.isArray(record[key])) {
-            const identifiers = [];
-            record[key].forEach((value) => {
-              if (value.id) {
-                identifiers.push(value.id);
-              }
-            });
-            if (identifiers.length) {
-              relCollection.find({ _id: { $in: identifiers } }, (err, records) => {
-                if (err) {
-                  return next(err);
-                }
-                res.json(serializer.serialize(records));
-              });
-              return;
-            } else {
-              response = defaultResponse;
-            }
-          } else {
-            response = defaultResponse;
-          }
+        if (!record[key]) {
+          res.json(defaultResponse);
         } else {
-          if (record[key].id) {
-            findById(relCollection, record[key].id, (err, record) => {
-              // If an error, make it 'soft' by removing the model from the response.
-              response = (err) ? defaultResponse : record;
-              res.json(serializer.serialize(response));
-            });
-            return;
+          const relCollection = loadCollection(rel.entity);
+          if (rel.type === 'many') {
+            if (Array.isArray(record[key])) {
+              const identifiers = [];
+              record[key].forEach((value) => {
+                if (value.id) {
+                  identifiers.push(value.id);
+                }
+              });
+              if (identifiers.length) {
+                relCollection.findAsync({ _id: { $in: identifiers } }).then((records) => {
+                  res.json(serializer.serialize(records));
+                }).catch(next);
+              } else {
+                res.json(defaultResponse);
+              }
+            } else {
+              res.json(defaultResponse);
+            }
+          } else if (record[key].id) {
+            findById(relCollection, record[key].id).then((relRecord) => {
+              res.json(serializer.serialize(relRecord));
+            }).catch(() => res.json(defaultResponse));
           } else {
-            response = defaultResponse;
+            res.json(defaultResponse);
           }
         }
-        res.json(serializer.serialize(response));
-      });
-    });
+      }).catch(next);
+    }).catch(next);
+
+    // @todo Must determine HOW the rel should be saved in the database.
+    // The default { id: "", type: "" } format is probably fine, however
+    // we would need the ability to munge this hash for different schemas.
+    // By always keeping a type, we could (but should we?) support a
+    // relationships where ANY model type (or multiple, disparate model types)
+    // could be related.
+    // For now, this assumes that multiple model types are NOT supported.
+    // The persistence side would need to enforce the rules about what can
+    // and cannot be saved.
+
+    // @todo This is now forced to use JSON:API format all the time.
+    // Likely, the entire routing structure should be a part of the adapter, as
+    // different formats may have completely different routing needs.
+    // This complicates things more depending on which framework one is using.
+    // Perhaps we don't care and will just enforce a standard somewhere in the microservice
+
+    // @todo This is enforcing a native database query.
+    // Once microserviced, this should use the entity service to retrieve data
+    // and not the db directly.
+
+    // @todo Relationships should support more options than just a foreign id.
+    // The rel definition could (and probably should) support query parameters of any kind.
   })
 ;
 router.route('/:type/:id/:relField')
