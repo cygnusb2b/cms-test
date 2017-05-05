@@ -1,0 +1,28 @@
+{
+  "name": "server",
+  "version": "1.0.0",
+  "description": "A quick and dirty REST API backend using the json:api format.",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/cygnusb2b/cms-test.git"
+  },
+  "main": "src/app.js",
+  "dependencies": {
+    "body-parser": "^1.17.1",
+    "compression": "^1.6.2",
+    "express": "^4.15.2",
+    "helmet": "^3.6.0",
+    "http-errors": "^1.6.1",
+    "jsonapi-serializer": "^3.5.3",
+    "nedb": "^1.8.0"
+  },
+  "devDependencies": {
+    "gulp": "^3.9.1"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "serve": "./node_modules/.bin/gulp"
+  },
+  "author": "AS3/Southcomm",
+  "license": "MIT"
+}
