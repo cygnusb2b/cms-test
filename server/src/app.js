@@ -22,7 +22,9 @@ app.use(compression({
 
 // Parse JSON bodies.
 // @see https://github.com/expressjs/body-parser
-app.use(bodyParser.json());
+app.use(bodyParser.json({
+  type: ['application/vnd.api+json', 'application/json'],
+}));
 app.use(bodyParser.urlencoded({ extended: true }));
 
 app.use('/api', require('./api'));

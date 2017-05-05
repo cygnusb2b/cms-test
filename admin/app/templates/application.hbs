@@ -1,0 +1,26 @@
+{{#-bs/navbar inverse=true class='bg-primary' toggleable='md' fixed='top'}}
+
+  <button class="navbar-toggler navbar-toggler-right" type="button" data-toggle="collapse" data-target="#primary-nav">
+    <span class="navbar-toggler-icon"></span>
+  </button>
+
+  {{#link-to 'index' class='navbar-brand'}}testCMS{{/link-to}}
+
+  <div class="collapse navbar-collapse" id="primary-nav">
+    <ul class="navbar-nav mr-auto mt-2 mt-md-0">
+      <li class="nav-item">
+        {{#link-to 'stories' class='nav-link'}}Stories{{/link-to}}
+      </li>
+    </ul>
+  </div>
+{{/-bs/navbar}}
+
+<div class="container">
+  <div class="row">
+    <div class="col">
+      {{outlet}}
+    </div>
+  </div>
+</div>
+
+

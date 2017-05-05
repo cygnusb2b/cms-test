@@ -1,0 +1,12 @@
+@import "bower_components/bootswatch/cosmo/variables";
+@import "bower_components/bootstrap/scss/bootstrap";
+@import "bower_components/bootswatch/cosmo/bootswatch";
+
+body {
+    margin-top: 70px;
+}
+
+a[data-ember-action]:not(:disabled),
+.clickable {
+    cursor: pointer;
+}

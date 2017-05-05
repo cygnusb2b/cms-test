@@ -1,0 +1,25 @@
+<h3>Browse</h3>
+<hr>
+<div class="list-group">
+  {{#each model as |story|}}
+    {{#link-to "stories.edit" story.id class="list-group-item list-group-item-action flex-column align-items-start"}}
+      <div class="d-flex w-100 justify-content-between">
+        <h5 class="mb-1">{{ story.title }}</h5>
+      </div>
+      <p class="mb-1">
+        {{ story.description }}
+        {{!--
+          When we start retrieving data from the backend, you'll notice that this won't display anything...
+          That's becuase we haven't defined the description attribute in models/story.js yet.
+        --}}
+      </p>
+      <small>{{ story.id }}</small>
+    {{/link-to}}
+  {{else}}
+    <h4>No stories found.</h4>
+    <div class="alert alert-info" role="alert">
+      <strong>Where's my data?!</strong>
+      Let's <a class="alert-link" {{action 'populate'}}>populate a few test models</a> for now, but this alert should go away once all CRUD tasks are complete. 🤓
+    </div>
+  {{/each}}
+</div>
