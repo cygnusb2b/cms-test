@@ -1,5 +1,3 @@
-const JSONAPISerializer = require('jsonapi-serializer').Serializer;
-const JSONAPIDeserializer = require('jsonapi-serializer').Deserializer;
 const models = require('../models');
 
 /**
@@ -9,7 +7,7 @@ const models = require('../models');
  * @return {boolean}
  */
 function exists(type) {
-  return models.hasOwnProperty(type);
+  return Object.prototype.hasOwnProperty.call(models, type);
 }
 
 /**
@@ -36,49 +34,6 @@ function getMetadataFor(type) {
 }
 
 /**
- * Gets a single relationship metadata object for the provided model type and property key.
- *
- * @param {string} type The model type.
- * @paran {string} key The relationship field key.
- * @return {object}
- */
-function getRelationshipFor(type, key) {
-  if (!hasRelationship(type, key)) {
-    throw new Error(`No ${key} relationship assigned on model ${type}`);
-  }
-  return getRelationshipsFor(type).find((rel) => {
-    return rel.key === key;
-  });
-}
-
-/**
- * Gets all relationship metadata objects for the provided model type.
- *
- * @param {string} type The model type.
- * @return {array}
- */
-function getRelationshipsFor(type) {
-  let relationships = [];
-
-  const validTypes = { one: true, many: true };
-  const metadata = getMetadataFor(type);
-
-  getRelationshipKeys(type).forEach((key) => {
-    const relMeta = metadata.relationships[key];
-    if (!relMeta.entity || !validTypes.hasOwnProperty(relMeta.type)) {
-      // Invalid relationship metadata.
-      return;
-    }
-    relationships.push({
-      key: key,
-      type: relMeta.type,
-      entity: relMeta.entity
-    });
-  });
-  return relationships;
-}
-
-/**
  * Gets all relationship field keys for the provided model type.
  *
  * @param {string} type The model type.
@@ -86,7 +41,7 @@ function getRelationshipsFor(type) {
  */
 function getRelationshipKeys(type) {
   const metadata = getMetadataFor(type);
-  if ('object' === typeof metadata.relationships) {
+  if (typeof metadata.relationships === 'object') {
     return Object.keys(metadata.relationships);
   }
   return [];
@@ -100,15 +55,56 @@ function getRelationshipKeys(type) {
  * @return {boolean}
  */
 function hasRelationship(type, key) {
-  return -1 !== getRelationshipKeys(type).indexOf(key);
+  return getRelationshipKeys(type).indexOf(key) !== -1;
+}
+
+/**
+ * Gets all relationship metadata objects for the provided model type.
+ *
+ * @param {string} type The model type.
+ * @return {array}
+ */
+function getRelationshipsFor(type) {
+  const relationships = [];
+
+  const validTypes = { one: true, many: true };
+  const metadata = getMetadataFor(type);
+
+  getRelationshipKeys(type).forEach((key) => {
+    const relMeta = metadata.relationships[key];
+    if (!relMeta.entity || !Object.prototype.hasOwnProperty.call(validTypes, relMeta.type)) {
+      // Invalid relationship metadata.
+      return;
+    }
+    relationships.push({
+      key,
+      type: relMeta.type,
+      entity: relMeta.entity,
+    });
+  });
+  return relationships;
+}
+
+/**
+ * Gets a single relationship metadata object for the provided model type and property key.
+ *
+ * @param {string} type The model type.
+ * @paran {string} key The relationship field key.
+ * @return {object}
+ */
+function getRelationshipFor(type, key) {
+  if (!hasRelationship(type, key)) {
+    throw new Error(`No ${key} relationship assigned on model ${type}`);
+  }
+  return getRelationshipsFor(type).find(rel => rel.key === key);
 }
 
 module.exports = {
-  getAllTypes: getAllTypes,
-  getMetadataFor: getMetadataFor,
-  exists: exists,
-  getRelationshipFor: getRelationshipFor,
-  getRelationshipsFor: getRelationshipsFor,
-  getRelationshipKeys: getRelationshipKeys,
-  hasRelationship: hasRelationship,
+  getAllTypes,
+  getMetadataFor,
+  exists,
+  getRelationshipFor,
+  getRelationshipsFor,
+  getRelationshipKeys,
+  hasRelationship,
 };

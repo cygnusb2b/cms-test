@@ -2,17 +2,19 @@ const JSONAPISerializer = require('jsonapi-serializer').Serializer;
 const JSONAPIDeserializer = require('jsonapi-serializer').Deserializer;
 const modelManager = require('./model-manager');
 const path = require('path');
+const bluebird = require('bluebird');
 
 /**
  * Applies relationship data from a deserialized request payload
  * to the object to be persisted in the database.
  *
  * @param {string} type The model type.
- * @param {object} data The deserialized request payload.
+ * @param {object} toApply The deserialized request payload.
  * @param {object} applyTo The object to apply the data to.
  */
-function applyRelationshipData(type, data, applyTo) {
-  let cloned = Object.assign({}, data);
+function applyRelationshipData(type, data, toApply) {
+  const cloned = Object.assign({}, data);
+  const applyTo = Object.assign({}, toApply);
 
   modelManager.getRelationshipsFor(type).forEach((rel) => {
     const key = rel.key;
@@ -41,6 +43,7 @@ function applyRelationshipData(type, data, applyTo) {
       }
     }
   });
+  return applyTo;
 }
 
 /**
@@ -51,7 +54,7 @@ function applyRelationshipData(type, data, applyTo) {
  * @return {string}
  */
 function createLink(req, p) {
-  return `${req.protocol}:\/\/${req.get('host')}${path.join('/api', p)}`;
+  return `${req.protocol}://${req.get('host')}${path.join('/api', p)}`;
 }
 
 /**
@@ -61,19 +64,16 @@ function createLink(req, p) {
  * @return {JSONAPIDeserializer}
  */
 function getDeserializerFor(type) {
-  const metadata = modelManager.getMetadataFor(type);
-  let options = {
+  const options = {
     keyForAttribute: 'camelCase', // @todo Make configurable?
   };
 
   modelManager.getRelationshipsFor(type).forEach((relMeta) => {
     options[relMeta.entity] = {
-      valueForRelationship: (model) => {
-        return { id: model.id, type: model.type };
-      },
+      valueForRelationship: model => ({ id: model.id, type: model.type }),
     };
   });
-  return new JSONAPIDeserializer(options);
+  return bluebird.promisifyAll(new JSONAPIDeserializer(options));
 }
 
 /**
@@ -85,47 +85,39 @@ function getDeserializerFor(type) {
  */
 function getSerializerFor(type, req) {
   const metadata = modelManager.getMetadataFor(type);
-  let options = {
+  const options = {
+    // eslint-disable-next-line no-underscore-dangle
     id: '_id', // @todo Makes an assumption about the ID type... should not be hardcoded.
     attributes: metadata.attributes.slice(), // Clone the attrs, as the serializer will modify them.
     keyForAttribute: 'camelCase', // @todo Make configurable?
-    typeForAttribute: (attribute, data) => {
-      return data.type;
-    },
+    typeForAttribute: (attribute, data) => data.type,
     topLevelLinks: {
       self: createLink(req, req.path),
     },
     dataLinks: {
-      self: (data, model) => {
-        return createLink(req, `${type}/${model._id}`);
-      }
+      // eslint-disable-next-line no-underscore-dangle
+      self: (data, model) => createLink(req, `${type}/${model._id}`),
     },
   };
 
   modelManager.getRelationshipsFor(type).forEach((relMeta) => {
     options.attributes.push(relMeta.key);
     options[relMeta.key] = {
-      ref: (model, value) => {
-        return (value) ? value.id : null;
-      },
+      ref: (model, value) => ((value) ? value.id : null),
       relationshipLinks: {
-        self: (record, current, parent) => {
-          return createLink(req, `${type}/${parent.id}/relationships/${relMeta.key}`);
-        },
-        related:(record, current, parent) => {
-          return createLink(req, `${type}/${parent.id}/${relMeta.key}`);
-        },
+        self: (record, current, parent) => createLink(req, `${type}/${parent.id}/relationships/${relMeta.key}`),
+        related: (record, current, parent) => createLink(req, `${type}/${parent.id}/${relMeta.key}`),
       },
     };
   });
 
   options.transform = (record) => {
-    let cloned = Object.assign({}, record);
+    const cloned = Object.assign({}, record);
 
     // Remove all null values from the record to prevent them
     // from appearing in the serialized result.
     Object.keys(cloned).forEach((attr) => {
-      if (null === cloned[attr]) {
+      if (cloned[attr] === null) {
         delete cloned[attr];
       }
     });
@@ -135,8 +127,8 @@ function getSerializerFor(type, req) {
 }
 
 module.exports = {
-  applyRelationshipData: applyRelationshipData,
-  createLink: createLink,
-  getDeserializerFor: getDeserializerFor,
-  getSerializerFor: getSerializerFor,
+  applyRelationshipData,
+  createLink,
+  getDeserializerFor,
+  getSerializerFor,
 };
