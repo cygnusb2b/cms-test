@@ -4,5 +4,5 @@ module.exports = {
   relationships: {
     tags: { type: 'many', entity: 'tags' },
     author: { type: 'one', entity: 'people' },
-  }
+  },
 };
