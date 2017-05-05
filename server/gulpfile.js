@@ -7,7 +7,7 @@ var
   ]
 ;
 
-gulp.task('serve', function(cb) {
+gulp.task('serve', ['lint'], function(cb) {
   if (node) {
     node.kill();
   }
@@ -25,6 +25,17 @@ gulp.task('serve', function(cb) {
 
 gulp.task('watch', function() {
   gulp.watch(watchedPaths, ['serve']);
+})
+
+gulp.task('lint', function(cb) {
+  lint = spawn('./node_modules/.bin/eslint', watchedPaths, {stdio: 'inherit'});
+  lint.on('close', function (code) {
+    if (code === 8) {
+      cb(code);
+      gulp.log('Error detected, waiting for changes...');
+    }
+    cb();
+  });
 })
 
 gulp.task('default', ['watch', 'serve']);
