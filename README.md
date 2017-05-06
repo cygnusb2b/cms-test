@@ -30,7 +30,7 @@ npm install
 bower install
 ```
 
-To start the ember frontend, execute `ember build --watch`. Your ember application is now running and accessible via `http://localhost:4200`.
+To start the ember frontend, execute `ember serve --proxy=http://localhost:8888`. Your ember application is now running and accessible via `http://localhost:4200`.
 
 ## Contributing
 
