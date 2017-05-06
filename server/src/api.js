@@ -68,6 +68,23 @@ const validateType = bluebird.promisify((type, cb) => {
 });
 
 /**
+ * Runs on all API routes with the `type` parameter.
+ * Validates the model type and payload (when applicable).
+ */
+router.param('type', (req, res, next) => {
+  validateType(req.params.type).then(() => {
+    if (req.method === 'POST' || req.method === 'PATCH') {
+      const isNew = req.method === 'POST';
+      validatePayload(req.body, isNew).then(() => {
+        next();
+      }).catch(next);
+    } else {
+      next();
+    }
+  }).catch(next);
+});
+
+/**
  * Routes for listing all resources.
  */
 router.get('/', (req, res) => {
@@ -82,16 +99,15 @@ router.get('/', (req, res) => {
  * Root resource routes.
  */
 router.route('/:type')
+
   /**
    * The retrieve/list all route.
    */
   .get((req, res, next) => {
     const type = req.params.type;
-    validateType(type).then(() => {
-      loadCollection(type).findAsync({}).then((records) => {
-        const serializer = adapter.getSerializerFor(type, req);
-        res.json(serializer.serialize(records));
-      }).catch(next);
+    loadCollection(type).findAsync({}).then((records) => {
+      const serializer = adapter.getSerializerFor(type, req);
+      res.json(serializer.serialize(records));
     }).catch(next);
   })
 
@@ -100,25 +116,21 @@ router.route('/:type')
    */
   .post((req, res, next) => {
     const payload = req.body;
-    validateType(req.params.type).then(() => {
-      validatePayload(payload, true).then(() => {
-        const type = payload.data.type;
-        const deserializer = adapter.getDeserializerFor(type);
-        deserializer.deserializeAsync(payload).then((data) => {
-          const metadata = modelManager.getMetadataFor(type);
+    const type = payload.data.type;
+    const deserializer = adapter.getDeserializerFor(type);
+    deserializer.deserializeAsync(payload).then((data) => {
+      const metadata = modelManager.getMetadataFor(type);
 
-          let toInsert = {};
-          metadata.attributes.forEach((attr) => {
-            toInsert[attr] = data[attr] || null;
-            return toInsert;
-          });
-          toInsert = adapter.applyRelationshipData(type, data, toInsert);
+      let toInsert = {};
+      metadata.attributes.forEach((attr) => {
+        toInsert[attr] = data[attr] || null;
+        return toInsert;
+      });
+      toInsert = adapter.applyRelationshipData(type, data, toInsert);
 
-          loadCollection(type).insertAsync(toInsert).then((record) => {
-            const serializer = adapter.getSerializerFor(type, req);
-            res.json(serializer.serialize(record));
-          }).catch(next);
-        }).catch(next);
+      loadCollection(type).insertAsync(toInsert).then((record) => {
+        const serializer = adapter.getSerializerFor(type, req);
+        res.json(serializer.serialize(record));
       }).catch(next);
     }).catch(next);
   })
@@ -133,12 +145,9 @@ router.route('/:type/:id')
    */
   .get((req, res, next) => {
     const type = req.params.type;
-    validateType(type).then(() => {
-      const collection = loadCollection(type);
-      findById(collection, req.params.id).then((record) => {
-        const serializer = adapter.getSerializerFor(type, req);
-        res.json(serializer.serialize(record));
-      }).catch(next);
+    findById(loadCollection(type), req.params.id).then((record) => {
+      const serializer = adapter.getSerializerFor(type, req);
+      res.json(serializer.serialize(record));
     }).catch(next);
   })
 
@@ -146,13 +155,10 @@ router.route('/:type/:id')
    * The delete route.
    */
   .delete((req, res, next) => {
-    const type = req.params.type;
-    validateType(type).then(() => {
-      const collection = loadCollection(type);
-      findById(collection, req.params.id).then(() => {
-        collection.removeAsync({ _id: req.params.id }).then(() => {
-          res.status(204).send();
-        }).catch(next);
+    const collection = loadCollection(req.params.type);
+    findById(collection, req.params.id).then(() => {
+      collection.removeAsync({ _id: req.params.id }).then(() => {
+        res.status(204).send();
       }).catch(next);
     }).catch(next);
   })
@@ -161,32 +167,28 @@ router.route('/:type/:id')
    * The update route.
    */
   .patch((req, res, next) => {
-    validateType(req.params.type).then(() => {
-      const payload = req.body;
-      validatePayload(payload, false).then(() => {
-        if (payload.data.id !== req.params.id) {
-          throw httpError(400, 'The ID found in the request URI does not match the value of the `id` member.');
+    const payload = req.body;
+    if (payload.data.id !== req.params.id) {
+      throw httpError(400, 'The ID found in the request URI does not match the value of the `id` member.');
+    }
+    const type = payload.data.type;
+    const deserializer = adapter.getDeserializerFor(type);
+    deserializer.deserializeAsync(payload).then((data) => {
+      const metadata = modelManager.getMetadataFor(type);
+
+      let toUpdate = {};
+      metadata.attributes.forEach((attr) => {
+        if (typeof data[attr] !== 'undefined') {
+          toUpdate[attr] = data[attr] || null;
         }
-        const type = payload.data.type;
-        const deserializer = adapter.getDeserializerFor(type);
-        deserializer.deserializeAsync(payload).then((data) => {
-          const metadata = modelManager.getMetadataFor(type);
+      });
+      toUpdate = adapter.applyRelationshipData(type, data, toUpdate);
 
-          let toUpdate = {};
-          metadata.attributes.forEach((attr) => {
-            if (typeof data[attr] !== 'undefined') {
-              toUpdate[attr] = data[attr] || null;
-            }
-          });
-          toUpdate = adapter.applyRelationshipData(type, data, toUpdate);
-
-          const collection = loadCollection(type);
-          collection.updateAsync({ _id: payload.data.id }, { $set: toUpdate }).then(() => {
-            findById(collection, payload.data.id).then((record) => {
-              const serializer = adapter.getSerializerFor(type, req);
-              res.json(serializer.serialize(record));
-            }).catch(next);
-          }).catch(next);
+      const collection = loadCollection(type);
+      collection.updateAsync({ _id: payload.data.id }, { $set: toUpdate }).then(() => {
+        findById(collection, payload.data.id).then((record) => {
+          const serializer = adapter.getSerializerFor(type, req);
+          res.json(serializer.serialize(record));
         }).catch(next);
       }).catch(next);
     }).catch(next);
@@ -203,46 +205,45 @@ router.route('/:type/:id/relationships/:key')
   .get((req, res, next) => {
     const type = req.params.type;
     const key = req.params.key;
-    validateType(type).then(() => {
-      if (!modelManager.hasRelationship(type, key)) {
-        throw httpError(400, `The relationship '${key}' does not exist on model '${type}'`);
-      }
-      findById(loadCollection(type), req.params.id).then((record) => {
-        const rel = modelManager.getRelationshipFor(type, key);
-        const serializer = adapter.getSerializerFor(rel.entity, req);
-        const defaultResponse = serializer.serialize((rel.type === 'many') ? [] : null);
 
-        if (!record[key]) {
-          res.json(defaultResponse);
-        } else {
-          const relCollection = loadCollection(rel.entity);
-          if (rel.type === 'many') {
-            if (Array.isArray(record[key])) {
-              const identifiers = [];
-              record[key].forEach((value) => {
-                if (value.id) {
-                  identifiers.push(value.id);
-                }
-              });
-              if (identifiers.length) {
-                relCollection.findAsync({ _id: { $in: identifiers } }).then((records) => {
-                  res.json(serializer.serialize(records));
-                }).catch(next);
-              } else {
-                res.json(defaultResponse);
+    if (!modelManager.hasRelationship(type, key)) {
+      throw httpError(400, `The relationship '${key}' does not exist on model '${type}'`);
+    }
+    findById(loadCollection(type), req.params.id).then((record) => {
+      const rel = modelManager.getRelationshipFor(type, key);
+      const serializer = adapter.getSerializerFor(rel.entity, req);
+      const defaultResponse = serializer.serialize((rel.type === 'many') ? [] : null);
+
+      if (!record[key]) {
+        res.json(defaultResponse);
+      } else {
+        const relCollection = loadCollection(rel.entity);
+        if (rel.type === 'many') {
+          if (Array.isArray(record[key])) {
+            const identifiers = [];
+            record[key].forEach((value) => {
+              if (value.id) {
+                identifiers.push(value.id);
               }
+            });
+            if (identifiers.length) {
+              relCollection.findAsync({ _id: { $in: identifiers } }).then((records) => {
+                res.json(serializer.serialize(records));
+              }).catch(next);
             } else {
               res.json(defaultResponse);
             }
-          } else if (record[key].id) {
-            findById(relCollection, record[key].id).then((relRecord) => {
-              res.json(serializer.serialize(relRecord));
-            }).catch(() => res.json(defaultResponse));
           } else {
             res.json(defaultResponse);
           }
+        } else if (record[key].id) {
+          findById(relCollection, record[key].id).then((relRecord) => {
+            res.json(serializer.serialize(relRecord));
+          }).catch(() => res.json(defaultResponse));
+        } else {
+          res.json(defaultResponse);
         }
-      }).catch(next);
+      }
     }).catch(next);
 
     // @todo Must determine HOW the rel should be saved in the database.
