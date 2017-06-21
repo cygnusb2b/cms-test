@@ -1,0 +1,27 @@
+<h3>Create Tag</h3>
+<hr>
+<div class="row">
+  <div class="col">
+    <div class="form-group">
+      <label>Name</label>
+      {{input type="text" class="form-control" value=model.name}}
+      <small class="form-text text-muted">The name of the tag.</small>
+    </div>
+  </div>
+</div>
+<div class="row">
+  <div class="col">
+    <div class="alert alert-info" role="alert">
+      <strong>Build the Form</strong>
+      You'll notice that the additional fields for the story are missing (such as description).
+      This field will need to be added to the `app/models/tag.js` file as well as to this template.
+    </div>
+  </div>
+</div>
+<div class="row">
+  <div class="col">
+    <button class="btn btn-success" {{action (route-action "saveModel" model "tags.index")}}>
+      {{-ion "android-create"}} Save
+    </button>
+  </div>
+</div>

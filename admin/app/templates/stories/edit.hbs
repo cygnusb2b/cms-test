@@ -1,1 +1,36 @@
-{{outlet}}
+<div class="row">
+  <div class="col">
+    <div class="float-left">
+      <h3>Edit Story</h3>
+      <h4 class="mb-0">{{ model.title }}</h4>
+    </div>
+    <button class="btn btn-sm btn-outline-danger float-right" {{action (route-action "deleteModel" model "stories.index")}}>
+      {{-ion 'android-close'}} Delete
+    </button>
+  </div>
+</div>
+<hr>
+<div class="row">
+  <div class="col">
+    <div class="form-group">
+      <label>Title</label>
+      {{input type="text" class="form-control" value=model.title}}
+      <small class="form-text text-muted">The title of the story.</small>
+    </div>
+  </div>
+</div>
+<div class="row">
+  <div class="col">
+    <div class="alert alert-info" role="alert">
+      <strong>Complete the Form</strong>
+      You'll probably begin to notice that the form for `stories.create` and `stories.edit` are almost identical (except maybe the header and `saveModel` action). You may want to avoid duplicating your form code and utilize a template <a class="alert-link" href="https://www.emberjs.com/api/classes/Ember.Templates.helpers.html#method_partial" target="_blank">partial</a> instead.
+    </div>
+  </div>
+</div>
+<div class="row">
+  <div class="col">
+    <button class="btn btn-success" {{action (route-action "saveModel" model "stories.index")}}>
+      {{-ion "android-create"}} Save
+    </button>
+  </div>
+</div>

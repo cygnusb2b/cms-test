@@ -1,15 +1,23 @@
-{{#-bs/navbar inverse=true class='bg-primary' toggleable='md' fixed='top'}}
+<div class="loading-overlay"><div class="spin">{{-ion "radio-waves"}}</div></div>
+
+{{#-bs/navbar inverse=true class="bg-primary" toggleable="md" fixed="top"}}
 
   <button class="navbar-toggler navbar-toggler-right" type="button" data-toggle="collapse" data-target="#primary-nav">
     <span class="navbar-toggler-icon"></span>
   </button>
 
-  {{#link-to 'index' class='navbar-brand'}}testCMS{{/link-to}}
+  {{#link-to "index" class="navbar-brand"}}testCMS{{/link-to}}
 
   <div class="collapse navbar-collapse" id="primary-nav">
     <ul class="navbar-nav mr-auto mt-2 mt-md-0">
       <li class="nav-item">
-        {{#link-to 'stories' class='nav-link'}}Stories{{/link-to}}
+        {{#link-to "stories" class="nav-link"}}Stories{{/link-to}}
+      </li>
+      <li class="nav-item">
+        {{#link-to "tags" class="nav-link"}}Tags{{/link-to}}
+      </li>
+      <li class="nav-item">
+        <a class="nav-link">People (Not yet implemented)</a>
       </li>
     </ul>
   </div>

@@ -1,1 +1,27 @@
-{{outlet}}
+<h3>Create Story</h3>
+<hr>
+<div class="row">
+  <div class="col">
+    <div class="form-group">
+      <label>Title</label>
+      {{input type="text" class="form-control" value=model.title}}
+      <small class="form-text text-muted">The title of the story.</small>
+    </div>
+  </div>
+</div>
+<div class="row">
+  <div class="col">
+    <div class="alert alert-info" role="alert">
+      <strong>Build the Form</strong>
+      You'll notice that the additional fields for the story are missing (such as description, body, etc).
+      These fields will need to be added to the `app/models/story.js` file as well as to this template. Feel free to adjust the layout of the form in anyway you'd like. Optionally, you could implement an interface to handle the stories `tags` and `author` fields.
+    </div>
+  </div>
+</div>
+<div class="row">
+  <div class="col">
+    <button class="btn btn-success" {{action (route-action "saveModel" model "stories.index")}}>
+      {{-ion "android-create"}} Save
+    </button>
+  </div>
+</div>

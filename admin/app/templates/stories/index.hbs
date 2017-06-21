@@ -1,3 +1,7 @@
+<button class="btn btn-success create float-right fixed-bottom" {{action (route-action "linkTo" "stories.create")}}>
+  {{-ion "android-create"}} Create
+</button>
+
 <h3>Browse</h3>
 <hr>
 <div class="list-group">
@@ -13,13 +17,13 @@
           That's becuase we haven't defined the description attribute in models/story.js yet.
         --}}
       </p>
-      <small>{{ story.id }}</small>
+      <small>ID: {{ story.id }}</small>
     {{/link-to}}
   {{else}}
     <h4>No stories found.</h4>
     <div class="alert alert-info" role="alert">
       <strong>Where's my data?!</strong>
-      Let's <a class="alert-link" {{action 'populate'}}>populate a few test models</a> for now, but this alert should go away once all CRUD tasks are complete. 🤓
+      For now, let's <a class="alert-link" {{action (route-action "populate")}}>populate a few test models</a>. Once you've completed the ability to create stories in the interface, this alert should be removed. 🤓
     </div>
   {{/each}}
 </div>

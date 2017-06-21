@@ -10,3 +10,84 @@ a[data-ember-action]:not(:disabled),
 .clickable {
     cursor: pointer;
 }
+
+.fixed-bottom.create {
+    left: inherit;
+}
+
+.loading-overlay {
+    position: fixed;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 99999;
+    display: none;
+    opacity: 1;
+    background: rgba(0,0,0,.5);
+}
+
+.spin {
+    -webkit-animation: spin 1s infinite linear;
+       -moz-animation: spin 1s infinite linear;
+         -o-animation: spin 1s infinite linear;
+            animation: spin 1s infinite linear;
+    -webkit-animation-timing-function: steps(8, start);
+       -moz-animation-timing-function: steps(8, start);
+            animation-timing-function: steps(8, start);
+}
+
+.loading-overlay .spin {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+
+    padding: 0;
+    margin-top: -25px;
+    margin-left: -25px;
+
+    font-size: 50px;
+
+    color: #444;
+}
+
+@-moz-keyframes spin {
+    0% {
+        -moz-transform: rotate(0deg);
+    }
+    100% {
+        -moz-transform: rotate(359deg);
+    }
+}
+@-webkit-keyframes spin {
+    0% {
+        -webkit-transform: rotate(0deg);
+    }
+    100% {
+        -webkit-transform: rotate(359deg);
+    }
+}
+@-o-keyframes spin {
+    0% {
+        -o-transform: rotate(0deg);
+    }
+    100% {
+        -o-transform: rotate(359deg);
+    }
+}
+@-ms-keyframes spin {
+    0% {
+        -ms-transform: rotate(0deg);
+    }
+    100% {
+        -ms-transform: rotate(359deg);
+    }
+}
+@keyframes spin {
+    0% {
+        transform: rotate(0deg);
+    }
+    100% {
+        transform: rotate(359deg);
+    }
+}

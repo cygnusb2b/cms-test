@@ -1,0 +1,22 @@
+<button class="btn btn-success create float-right fixed-bottom" {{action (route-action "linkTo" "tags.create")}}>
+  {{-ion "android-create"}} Create
+</button>
+
+<h3>Browse Tags</h3>
+<hr>
+
+<div class="alert alert-info" role="alert">
+  <strong>Build the browse page</strong>
+  As you will see in the template, the tag loop has been started, but now you have the ability to implement your own `app/templates/tags/index.hbs` page.
+  This could look very similar to the story browse page...
+  You'll also notice that a create page has been started (along with the corresponding `app/routes/tags/create.js` route) - however you won't see any newly created tags until this page is implemented.
+  Once the browse page is completed, you'll also need to build the `tags.edit` page. This will require that you create both the route (`app/routes/tags/edit.js`) and the template (`app/templates/tags/edit.hbs`).
+</div>
+
+<div class="list-group">
+  {{#each model as |tag|}}
+
+  {{else}}
+    <h4>No tags found.</h4>
+  {{/each}}
+</div>

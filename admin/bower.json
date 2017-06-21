@@ -2,6 +2,7 @@
   "name": "admin",
   "dependencies": {
     "bootstrap": "boostrap#v4.0.0-alpha.6",
-    "bootswatch": "https://github.com/thomaspark/bootswatch.git#v4"
+    "bootswatch": "https://github.com/thomaspark/bootswatch.git#v4",
+    "Ionicons": "ionicons#^2.0.1"
   }
 }
