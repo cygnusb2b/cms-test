@@ -6,7 +6,7 @@ This README outlines the details of the frontend CMS application using EmberJS.
 
 You will need the following things properly installed on your computer.
 
-* [Node.js](https://nodejs.org/) (with NPM)
+* [Node.js LTS](https://nodejs.org/) (with NPM)
 * [Bower](https://bower.io/)
 * [Ember CLI](https://ember-cli.com/)
 
