@@ -11,6 +11,7 @@ const port = process.env.PORT || 8888;
 // @see https://expressjs.com/en/advanced/best-practice-security.html#use-helmet
 // @see https://github.com/helmetjs/helmet
 app.use(helmet());
+app.use(helmet.noCache());
 
 // Should be replaced with a reverse proxy in production!
 // @see https://expressjs.com/en/advanced/best-practice-performance.html#proxy
