@@ -24,7 +24,7 @@ You will need the following things properly installed on your computer.
 
 ## REST API Details
 
-The API application serves as a "simulated" backened that provides database persistence using [NeDB](https://github.com/louischatriot/nedb) and [RESTful](https://en.wikipedia.org/wiki/Representational_state_transfer) endpoints using [Express](https://expressjs.com/). It's sole purpose is to provide a simple data layer for the EmberJS frontend. The API itself follows the [JSON API](http://jsonapi.org/) spec.
+The API application serves as a "simulated" backened that provides database persistence using [NeDB](https://github.com/louischatriot/nedb) via [RESTful](https://en.wikipedia.org/wiki/Representational_state_transfer) endpoints using [Express](https://expressjs.com/). It's sole purpose is to provide a simple data layer for the EmberJS frontend. The API itself follows the [JSON API](http://jsonapi.org/) spec.
 
 ### Models / Endpoints
 Three model types are supported by the backened: `person (pl. people)`, `story (pl. stories)` and `tag (pl. tags)`. Model [CRUD](https://en.wikipedia.org/wiki/Create,_read,_update_and_delete) operations are handled by interacting with the appropriate endpoints.
